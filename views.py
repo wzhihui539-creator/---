@@ -83,7 +83,7 @@ def user_add(request):
 
 
 class UserModelForm(forms.ModelForm):
-    name = forms.CharField(min_length=3, label="用户名")
+    name = forms.CharField(min_length=2, label="用户名")
     password = forms.CharField(min_length=3, label="密码")
 
     class Meta:
@@ -117,7 +117,19 @@ def user_edit(request, nid):
 
     form = UserModelForm(data=request.POST, instance=row_object)
     if form.is_valid():
+        # === 就是在这里使用！ ===
+
+        # 1. 假设你想强制把账户余额归零，不管用户填了多少
+        # form.instance.account = 0
+
+        # 2. 假设有一个字段叫 'editor' (最后编辑者)，表单里没写，你想后台自动加上
+        # form.instance.editor = request.user.username
+
+        # === 修改完 form.instance 之后，再保存 ===
+        # form.save()
         form.save()
         return redirect("user_list")
-    return render(request, "user_list.html", {"form": form})
-
+    # === 修改这里 ===
+    # 错误写法（原代码）：return render(request, "user_list.html", {"form": form})
+    # 正确写法：如果校验失败，应该重新渲染编辑页面，并带上包含错误信息的 form
+    return render(request, "user_edit.html", {"form": form})
