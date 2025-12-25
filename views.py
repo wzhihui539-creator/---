@@ -111,5 +111,13 @@ def user_model_form_add(request):
 
 def user_edit(request, nid):
     row_object = models.UserInfo.objects.filter(id=nid).first()
-    form = UserModelForm(instance=row_object)
-    return render(request, "user_edit.html", {"form": form})
+    if request.method == "GET":
+        form = UserModelForm(instance=row_object)
+        return render(request, "user_edit.html", {"form": form})
+
+    form = UserModelForm(data=request.POST, instance=row_object)
+    if form.is_valid():
+        form.save()
+        return redirect("user_list")
+    return render(request, "user_list.html", {"form": form})
+
