@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="container">
+        <div class="panel panel-default">
+            <!-- Default panel contents -->
+            <div class="panel-heading">
+                <span class="glyphicon glyphicon-th-list" aria-hidden="true"></span>
+                添加用户
+            </div>
+            <div class="panel-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>姓名</label>
+                        <input class="form-control" placeholder="标题" style="margin-bottom: 10px" name="name">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input class="form-control" placeholder="标题" style="margin-bottom: 10px" name="password">
+                    </div>
+                    <div class="form-group">
+                        <label>年龄</label>
+                        <input class="form-control" placeholder="标题" style="margin-bottom: 10px" name="age">
+                    </div>
+                    <div class="form-group">
+                        <label>余额</label>
+                        <input class="form-control" placeholder="标题" style="margin-bottom: 10px" name="account">
+                    </div>
+                    <div class="form-group">
+                        <label>入职时间</label>
+                        <input class="form-control" placeholder="标题" style="margin-bottom: 10px" name="ctime">
+                    </div>
+                    <div class="form-group">
+                        <label>性别</label>
+                        <select class="form-control" name="gender">
+                            {% for item in gender_choices %}
+                                <option value="{{ item.0 }}">{{ item.1 }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>所属部门</label>
+                        <select  class="form-control" name="depart_id">
+                            {% for item in depart_list %}
+                                <option value="{{ item.id }}">{{ item.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-default btn-primary">提交</button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
