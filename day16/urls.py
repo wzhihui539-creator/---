@@ -32,9 +32,9 @@ urlpatterns = [
     path('user/list/', views.user_list, name='user_list'),
     path('user/add/', views.user_add, name='user_add'),
     path('user/model/form/add/', views.user_model_form_add, name="model_form_user_add"),
-    path('user/<int:nid>/edit/',views.user_edit,name="user_edit"),
+    path('user/<int:nid>/edit/', views.user_edit, name="user_edit"),
     path('user/<int:nid>/delete/', views.user_delete, name="user_delete"),
     path('pretty/list/', views.pretty_list, name="pretty_list"),
+    path('pretty/add/',views.pretty_add,name='pretty_add'),
 
 ]
-
