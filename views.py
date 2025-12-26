@@ -87,12 +87,24 @@ class UserModelForm(forms.ModelForm):
     password = forms.CharField(min_length=3, label="密码")
 
     class Meta:
+        # 1. 绑定模型
+        # 意思就是：这个表单是专门为 models.UserInfo 这个数据库表服务的。
         model = models.UserInfo
+        # 2. 选择字段
+        # 意思就是：虽然 UserInfo 表里可能有很多列，但我这个表单只显示列表里的这几项。
+        # Django 会自动根据模型里的定义（如 IntegerField, CharField）生成对应的前端输入框。
         fields = ["name", 'password', "age", "account", "create_time", "gender", "depart"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
+            # 3. 给每个字段的“插件(widget)”添加 HTML 属性(attrs)
+            # 这里的 "class": "form-control" 是 Bootstrap 框架的核心样式类。
+            # 如果不加这行，生成的输入框就是光秃秃的原生样子，很丑。
+            # 加了这行，输入框就会变成 Bootstrap 风格（圆角、高亮、占满宽度）。
+
+            # "placeholder": field.label
+            # 意思是把字段的中文名（如“用户名”）自动放到输入框的提示语里（灰色占位符）。
             field.widget.attrs = {"class": "form-control", "placeholder": field.label}
 
 
@@ -133,3 +145,15 @@ def user_edit(request, nid):
     # 错误写法（原代码）：return render(request, "user_list.html", {"form": form})
     # 正确写法：如果校验失败，应该重新渲染编辑页面，并带上包含错误信息的 form
     return render(request, "user_edit.html", {"form": form})
+
+
+def user_delete(request, nid):
+    models.UserInfo.objects.filter(id=nid).first().delete()
+    return redirect("user_list")
+
+
+def pretty_list(request):
+    # order_by 按照等级排序“-”代表从高到底
+    queryset = models.PrettyNum.objects.all().order_by("-level")
+    print(queryset.filter().first().level)
+    return render(request, "pretty_list.html", {"queryset": queryset})
