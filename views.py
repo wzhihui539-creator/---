@@ -157,3 +157,33 @@ def pretty_list(request):
     queryset = models.PrettyNum.objects.all().order_by("-level")
     print(queryset.filter().first().level)
     return render(request, "pretty_list.html", {"queryset": queryset})
+
+
+class NumModeForm(forms.ModelForm):
+    class Meta:
+        model = models.PrettyNum
+        fields = ["mobile", "price", "level", "status"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.widget.attrs = {"class": "form-control", "placeholder": field.label}
+
+
+def pretty_add(request):
+    if request.method == "GET":
+        form = NumModeForm()
+        print(type(form))
+        print(list(form.fields.keys()))
+        target_field = "mobile"
+        if target_field in form.fields:
+            print(f"{target_field},字段类型：",form.fields[target_field])
+        else:
+            print(f"❌ 表单中没有{target_field}字段！")
+        print("✅ 表单初始值：", form.initial)
+        return render(request, 'pretty_add.html', {"form": {form}})
+    form = NumModeForm(data=request.POST)
+    if form.is_valid():
+        form.save()
+        return redirect("pretty_list")
+    return render(request, 'pretty_add.html', {"form": form})
