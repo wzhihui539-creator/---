@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <div class="container">
+        <div class="panel panel-default">
+            <!-- Default panel contents -->
+            <div class="panel-heading">
+                <span class="glyphicon glyphicon-th-list" aria-hidden="true"></span>
+                添加靓号
+            </div>
+            {% csrf_token %}
+
+
+            {% for field in form %}
+                <div>
+                    字段名：{{ field.name }} <br>
+                    标签：{{ field.label }} <br>
+                    输入框：{{ field }} <br>
+                    错误信息：{{ field.errors }}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
