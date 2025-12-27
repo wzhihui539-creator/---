@@ -154,10 +154,13 @@ def user_delete(request, nid):
 
 
 def pretty_list(request):
-    # order_by 按照等级排序“-”代表从高到底
-    queryset = models.PrettyNum.objects.all().order_by("-level")
-    print(queryset.filter().first().level)
-    return render(request, "pretty_list.html", {"queryset": queryset})
+    data_dict = {}
+    value = request.GET.get('q', '')  # 不加空格搜索框会出现None
+    if value:
+        data_dict["mobile__contains"] = value
+        # order_by 按照等级排序“-”代表从高到底
+    queryset = models.PrettyNum.objects.filter(**data_dict).order_by("-level")
+    return render(request, "pretty_list.html", {"queryset": queryset, "value": value})
 
 
 # class NumModeForm(forms.ModelForm):
@@ -193,6 +196,9 @@ class NumModeForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.instance or not self.instance.pk:  # 新增  新增号码不会默认填入表里difault的值
+            self.initial["level"] = ""
+            self.initial["status"] = ""
 
         # ③ 给每个控件加 bootstrap 样式；注意用 update，不要直接 "=" 覆盖
         for name, field in self.fields.items():
