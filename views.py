@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, HttpResponse
 from app01 import models
 from django import forms
+from django.core.validators import RegexValidator
 
 
 # Create your views here.
@@ -159,31 +160,212 @@ def pretty_list(request):
     return render(request, "pretty_list.html", {"queryset": queryset})
 
 
+# class NumModeForm(forms.ModelForm):
+#     class Meta:
+#         model = models.PrettyNum
+#         fields = ["mobile", "price", "level", "status"]
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         for name, field in self.fields.items():
+#             field.widget.attrs = {"class": "form-control", "placeholder": field.label}
+
 class NumModeForm(forms.ModelForm):
+    # ① 用表单字段“覆盖”模型字段：让 mobile 必填 + 正则校验
+    mobile = forms.CharField(
+        label="号码",
+        required=True,
+        validators=[RegexValidator(r"^1[3-9]\d{9}$", "手机号格式错误")],
+        error_messages={"required": "号码不能为空"},
+        help_text="请输入 11 位数字, 数字1开头,第二位不能是1或2",
+        widget=forms.TextInput()
+    )
+
     class Meta:
         model = models.PrettyNum
+        # fieles = "__all__"
         fields = ["mobile", "price", "level", "status"]
+        # exclude = ['level']  除了"level" 以外都循环
+        widgets = {
+            # ② price 用数字输入框，并加 min 防止负数（前端体验）
+            "price": forms.NumberInput(attrs={"min": 0}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for name, field in self.fields.items():
-            field.widget.attrs = {"class": "form-control", "placeholder": field.label}
 
+        # ③ 给每个控件加 bootstrap 样式；注意用 update，不要直接 "=" 覆盖
+        for name, field in self.fields.items():
+            field.widget.attrs.update({
+                "class": "form-control",
+            })
+
+            # input 才需要 placeholder；select 的 placeholder 基本不生效
+            if not isinstance(field.widget, forms.Select):
+                field.widget.attrs.setdefault("placeholder", field.label)
+
+            # 给必填字段一个中文提示
+            field.error_messages.setdefault("required", f"{field.label}不能为空")
+
+        # ④ select 做“请选择...”更像真实后台（并且可触发 required）
+        self.fields["level"].choices = [("", "请选择等级")] + list(self.fields["level"].choices)
+        print(self.fields["level"].choices)
+        # [('', '请选择等级'), (1, '一级'), (2, '二级'), (3, '三级'), (4, '四级')]
+        self.fields["status"].choices = [("", "请选择状态")] + list(self.fields["status"].choices)
+
+        self.fields["level"].error_messages["required"] = "请选择等级"
+        self.fields["status"].error_messages["required"] = "请选择状态"
+
+    def clean_mobile(self):
+        """⑤ 拦截重复号码（新增/编辑都能用）"""
+        mobile = self.cleaned_data.get("mobile")
+        """
+        这行代码是 Python（通常见于 Django 框架的表单 / 序列化器处理逻辑）中获取清洗后数据的典型写法，核心作用是安全地从清洗后的数据集里提取 "mobile" 字段的值，逐部分拆解：
+        1. self.cleaned_data
+        self：代表当前类的实例（比如 Django 表单类 / 序列化器类的实例）；
+        cleaned_data：Django 表单 / 序列化器的核心属性，是一个字典（dict），存储经过验证、清洗后的用户输入数据（比如去除空格、格式校验、类型转换后的结果）；
+        区别于原始输入（如 request.POST），cleaned_data 是 “干净、可信” 的数据，避免了原始输入的格式错误、非法值等问题。
+        2. .get("mobile")
+        调用字典的 get() 方法，而非直接 cleaned_data["mobile"]，是为了避免 KeyError 异常：
+        如果 "mobile" 字段存在且有值，返回对应值；
+        如果 "mobile" 字段不存在（比如用户未填写），返回 None（而非报错），让代码更健壮。
+        核心场景
+        通常用在 Django 表单的 clean() 方法、序列化器的验证方法中，目的是：
+        从验证通过的用户输入里，安全获取手机号（mobile）字段的值，后续可用于数据库存储、业务逻辑处理（如短信发送）等。
+        """
+        qs = models.PrettyNum.objects.filter(mobile=mobile)
+        # 如果是编辑页面（self.instance.pk 有值），要排除自己
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError("该号码已存在")
+        return mobile
+
+    def clean_price(self):
+        """⑥ 价格不能为负数（后端强校验）"""
+        price = self.cleaned_data.get("price")
+        if price is None:
+            return 0
+        if price < 0:
+            raise forms.ValidationError("价格不能小于 0")
+        return price
+
+
+# def pretty_add(request):
+#     if request.method == "GET":
+#         form = NumModeForm()
+#         print(type(form))
+#         print(list(form.fields.keys()))
+#         target_field = "mobile"
+#         if target_field in form.fields:
+#             print(f"{target_field},字段类型：",form.fields[target_field])
+#         else:
+#             print(f"❌ 表单中没有{target_field}字段！")
+#         print("✅ 表单初始值：", form.initial)
+#         return render(request, 'pretty_add.html', {"form": form})
+#     form = NumModeForm(data=request.POST)
+#     if form.is_valid():
+#         form.save()
+#         return redirect("pretty_list")
+#     return render(request, 'pretty_add.html', {"form": form})
 
 def pretty_add(request):
     if request.method == "GET":
         form = NumModeForm()
-        print(type(form))
-        print(list(form.fields.keys()))
-        target_field = "mobile"
-        if target_field in form.fields:
-            print(f"{target_field},字段类型：",form.fields[target_field])
-        else:
-            print(f"❌ 表单中没有{target_field}字段！")
-        print("✅ 表单初始值：", form.initial)
-        return render(request, 'pretty_add.html', {"form": {form}})
+        return render(request, "pretty_add.html", {"form": form})
+
     form = NumModeForm(data=request.POST)
     if form.is_valid():
         form.save()
         return redirect("pretty_list")
-    return render(request, 'pretty_add.html', {"form": form})
+
+    # 校验失败：把带错误信息、带用户输入的 form 重新扔回模板
+    return render(request, "pretty_add.html", {"form": form})
+
+
+class NumEditModeForm(forms.ModelForm):
+    # ① 用表单字段“覆盖”模型字段：让 mobile 必填 + 正则校验
+    mobile = forms.CharField(
+        label="号码",
+        required=True,
+        validators=[RegexValidator(r"^1[3-9]\d{9}$", "手机号格式错误")],
+        error_messages={"required": "号码不能为空"},
+        help_text="请输入 11 位数字, 数字1开头,第二位不能是1或2",
+        widget=forms.TextInput(),
+        disabled=True
+    )
+
+    class Meta:
+        model = models.PrettyNum
+        # fieles = "__all__"
+        fields = ["mobile", "price", "level", "status"]
+        # exclude = ['level']  除了"level" 以外都循环
+        widgets = {
+            # ② price 用数字输入框，并加 min 防止负数（前端体验）
+            "price": forms.NumberInput(attrs={"min": 0}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # ③ 给每个控件加 bootstrap 样式；注意用 update，不要直接 "=" 覆盖
+        for name, field in self.fields.items():
+            field.widget.attrs.update({
+                "class": "form-control",
+            })
+
+            # input 才需要 placeholder；select 的 placeholder 基本不生效
+            if not isinstance(field.widget, forms.Select):
+                field.widget.attrs.setdefault("placeholder", field.label)
+
+            # 给必填字段一个中文提示
+            field.error_messages.setdefault("required", f"{field.label}不能为空")
+
+        # ④ select 做“请选择...”更像真实后台（并且可触发 required）
+        self.fields["level"].choices = [("", "请选择等级")] + list(self.fields["level"].choices)
+        print(self.fields["level"].choices)
+        # [('', '请选择等级'), (1, '一级'), (2, '二级'), (3, '三级'), (4, '四级')]
+        self.fields["status"].choices = [("", "请选择状态")] + list(self.fields["status"].choices)
+
+        self.fields["level"].error_messages["required"] = "请选择等级"
+        self.fields["status"].error_messages["required"] = "请选择状态"
+
+    def clean_mobile(self):
+        """⑤ 拦截重复号码（新增/编辑都能用）"""
+        mobile = self.cleaned_data.get("mobile")
+        qs = models.PrettyNum.objects.filter(mobile=mobile)
+        # 如果是编辑页面（self.instance.pk 有值），要排除自己
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise forms.ValidationError("该号码已存在")
+        return mobile
+
+    def clean_price(self):
+        """⑥ 价格不能为负数（后端强校验）"""
+        price = self.cleaned_data.get("price")
+        if price is None:
+            return 0
+        if price < 0:
+            raise forms.ValidationError("价格不能小于 0")
+        return price
+
+
+# 编辑界面用了另一单独的类，和添加不一样，不允许修改号码，只能修改价格，等级，状态/用disabled=True 实现的
+def pretty_edit(request, nid):
+    row_object = models.PrettyNum.objects.filter(id=nid).first()
+    if request.method == "GET":
+        form = NumEditModeForm(instance=row_object)
+        return render(request, "pretty_edit.html", {"form": {form}})
+    form = NumEditModeForm(data=request.POST, instance=row_object)
+    if form.is_valid():
+        form.save()
+        return redirect("pretty_list")
+    return render(request, "pretty_edit.html", {"form": form})
+
+
+def pretty_delete(request, nid):
+    models.PrettyNum.objects.filter(id=nid).first().delete()
+    return redirect("pretty_list")
